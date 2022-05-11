@@ -83,15 +83,16 @@ class _DictSAXHandler(object):
             short_namespace = self.namespaces[namespace]
         except KeyError:
             short_namespace = namespace
-        if not short_namespace:
-            return name
-        else:
-            return self.namespace_separator.join((short_namespace, name))
+        return (
+            self.namespace_separator.join((short_namespace, name))
+            if short_namespace
+            else name
+        )
 
     def _attrs_to_dict(self, attrs):
         if isinstance(attrs, dict):
             return attrs
-        return self.dict_constructor(zip(attrs[0::2], attrs[1::2]))
+        return self.dict_constructor(zip(attrs[::2], attrs[1::2]))
 
     def startNamespaceDecl(self, prefix, uri):
         self.namespace_declarations[prefix or ''] = uri
@@ -126,15 +127,13 @@ class _DictSAXHandler(object):
         if len(self.path) == self.item_depth:
             item = self.item
             if item is None:
-                item = (None if not self.data
-                        else self.cdata_separator.join(self.data))
+                item = self.cdata_separator.join(self.data) if self.data else None
 
             should_continue = self.item_callback(self.path, item)
             if not should_continue:
                 raise ParsingInterrupted()
         if len(self.stack):
-            data = (None if not self.data
-                    else self.cdata_separator.join(self.data))
+            data = self.cdata_separator.join(self.data) if self.data else None
             item = self.item
             self.item, self.data = self.stack.pop()
             if self.strip_whitespace and data:
@@ -178,10 +177,7 @@ class _DictSAXHandler(object):
             else:
                 item[key] = [value, data]
         except KeyError:
-            if self._should_force_list(key, data):
-                item[key] = [data]
-            else:
-                item[key] = data
+            item[key] = [data] if self._should_force_list(key, data) else data
         return item
 
     def _should_force_list(self, key, value):
@@ -384,9 +380,12 @@ def _process_namespace(name, namespaces, ns_sep=':', attr_prefix='@'):
         pass
     else:
         ns_res = namespaces.get(ns.strip(attr_prefix))
-        name = '{}{}{}{}'.format(
-            attr_prefix if ns.startswith(attr_prefix) else '',
-            ns_res, ns_sep, name) if ns_res else name
+        name = (
+            f"{attr_prefix if ns.startswith(attr_prefix) else ''}{ns_res}{ns_sep}{name}"
+            if ns_res
+            else name
+        )
+
     return name
 
 
@@ -418,10 +417,7 @@ def _emit(key, value, content_handler,
         if v is None:
             v = OrderedDict()
         elif isinstance(v, bool):
-            if v:
-                v = _unicode('true')
-            else:
-                v = _unicode('false')
+            v = _unicode('true') if v else _unicode('false')
         elif not isinstance(v, dict):
             if expand_iter and hasattr(v, '__iter__') and not isinstance(v, _basestring):
                 v = OrderedDict(((expand_iter, v),))
@@ -441,7 +437,7 @@ def _emit(key, value, content_handler,
                                         attr_prefix)
                 if ik == '@xmlns' and isinstance(iv, dict):
                     for k, v in iv.items():
-                        attr = 'xmlns{}'.format(':{}'.format(k) if k else '')
+                        attr = f"xmlns{f':{k}' if k else ''}"
                         attrs[attr] = _unicode(v)
                     continue
                 if not isinstance(iv, _unicode):

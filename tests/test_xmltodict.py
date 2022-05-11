@@ -134,7 +134,7 @@ class XMLToDictTestCase(unittest.TestCase):
     def test_postprocessor(self):
         def postprocessor(path, key, value):
             try:
-                return key + ':int', int(value)
+                return f'{key}:int', int(value)
             except (ValueError, TypeError):
                 return key, value
         self.assertEqual({'a': {'b:int': [1, 2], 'b': 'x'}},
@@ -144,7 +144,7 @@ class XMLToDictTestCase(unittest.TestCase):
     def test_postprocessor_attribute(self):
         def postprocessor(path, key, value):
             try:
-                return key + ':int', int(value)
+                return f'{key}:int', int(value)
             except (ValueError, TypeError):
                 return key, value
         self.assertEqual({'a': {'@b:int': 1}},
@@ -167,15 +167,14 @@ class XMLToDictTestCase(unittest.TestCase):
             value = unichr(39321)
         except NameError:
             value = chr(39321)
-        self.assertEqual({'a': value},
-                         parse('<a>%s</a>' % value))
+        self.assertEqual({'a': value}, parse(f'<a>{value}</a>'))
 
     def test_encoded_string(self):
         try:
             value = unichr(39321)
         except NameError:
             value = chr(39321)
-        xml = '<a>%s</a>' % value
+        xml = f'<a>{value}</a>'
         self.assertEqual(parse(xml),
                          parse(xml.encode('utf-8')))
 
@@ -328,9 +327,7 @@ class XMLToDictTestCase(unittest.TestCase):
 
         def force_list(path, key, value):
             """Only return True for servers/server, but not for skip/server."""
-            if key != 'server':
-                return False
-            return path and path[-1][0] == 'servers'
+            return False if key != 'server' else path and path[-1][0] == 'servers'
 
         expectedResult = {
             'config': {

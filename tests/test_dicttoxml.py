@@ -58,7 +58,7 @@ class DictToXMLTestCase(unittest.TestCase):
         obj = {'a': {'b': ['1', '2', '3']}}
 
         def lazy_obj():
-            return {'a': {'b': (i for i in ('1', '2', '3'))}}
+            return {'a': {'b': iter(('1', '2', '3'))}}
         self.assertEqual(obj, parse(unparse(lazy_obj())))
         self.assertEqual(unparse(lazy_obj()),
                          unparse(parse(unparse(lazy_obj()))))
@@ -111,9 +111,7 @@ class DictToXMLTestCase(unittest.TestCase):
         obj = {'a': {'b': 1, 'c': 2}}
 
         def p(key, value):
-            if key == 'b':
-                return None
-            return key, value
+            return None if key == 'b' else (key, value)
 
         self.assertEqual(_strip(unparse(obj, preprocessor=p)),
                          '<a><c>2</c></a>')
